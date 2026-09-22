@@ -41,9 +41,11 @@ urgent ones an orange mark.
    access to **Projects** and **Tasks** (Tasks read/write is enough for Mark Done and adding;
    Projects read is needed to list projects).
 2. In Tuna, open **Settings → Extensions → Vikunja** and click **Add Connection**. Enter your
-   server URL (for example `https://tasks.example.com`) and the token. Several connections
-   (several servers) are supported; results are grouped per connection when there is more
-   than one.
+   server URL (for example `https://tasks.example.com`) and the token. The URL must use
+   HTTPS; plain `http://` is refused (except for `localhost`) because the token is sent with
+   every request. Several connections (several servers) are supported; results are grouped
+   per connection when there is more than one, and a connection that fails shows its error
+   in its own group without hiding the others.
 3. Optionally change **Default project** in the extension settings. It accepts a project
    title (case-insensitive) or a numeric project id and falls back to *Inbox*, then the first
    project.
@@ -55,6 +57,10 @@ token from the macOS Keychain (managed by Tuna's connection store). Nothing is s
 anywhere else. Requests are only made when you search, browse, or run an action; there is no
 background polling. Project lists are cached in memory for 60 seconds so task rows can show
 project names.
+
+Listings are paged from the server. Projects are always fetched in full. Task lists stop at
+300 open tasks (100 for a search) to keep the launcher responsive; when a list is cut off,
+a “Showing the first N tasks” row says so. Search or open Vikunja to reach the rest.
 
 Writes performed: creating tasks (`PUT /projects/{id}/tasks`) and completing tasks
 (`GET` then `POST /tasks/{id}`). The extension never deletes anything; the live API test
@@ -70,11 +76,18 @@ Build, test, and install with the shared repository tooling:
 make test
 ```
 
-The live API tests (`VikunjaLiveAPITests.swift`) read the first `~/.netrc` entry whose host
-mentions `vikunja` or `tasks` (`machine tasks.example.com login token password API-TOKEN`);
-override with `VIKUNJA_TEST_HOST` / `VIKUNJA_TEST_TOKEN`. They skip when no credentials are
-present, and otherwise create, complete, and delete one task named “Tuna extension smoke test”
-in your Inbox.
+`make test` never contacts a Vikunja server. The live API tests (`VikunjaLiveAPITests.swift`)
+are opt-in: they skip unless `VIKUNJA_LIVE_TESTS=1` reaches the test process, which with
+xcodebuild means prefixing it with `TEST_RUNNER_`:
+
+```bash
+TEST_RUNNER_VIKUNJA_LIVE_TESTS=1 make test-extensions
+```
+
+Credentials come from `VIKUNJA_TEST_HOST` / `VIKUNJA_TEST_TOKEN` (also `TEST_RUNNER_`-prefixed),
+or from the first `~/.netrc` entry whose host mentions `vikunja` or `tasks`
+(`machine tasks.example.com login token password API-TOKEN`). They create, complete, and
+delete one task named “Tuna extension smoke test” in your Inbox.
 
 Screenshots were taken against a throwaway local Vikunja seeded with invented data.
 
